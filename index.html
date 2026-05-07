@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Serwis Komputerowy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div id="app" class="container mt-5">
+    <h2 class="mb-4">Zarządzanie Serwisem Komputerowym</h2>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ isEditing ? 'Edytuj zgłoszenie' : 'Nowe zgłoszenie' }}</h5>
+            <form @submit.prevent="submitForm">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <input type="text" class="form-control" v-model="form.imie" placeholder="Imię i nazwisko" required>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <input type="text" class="form-control" v-model="form.model" placeholder="Model sprzętu" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <input type="text" class="form-control" v-model="form.opis_usterki" placeholder="Opis usterki" required>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <select class="form-select" v-model="form.status">
+                            <option value="Oczekujące">Oczekujące</option>
+                            <option value="W naprawie">W naprawie</option>
+                            <option value="Gotowe">Gotowe</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">{{ isEditing ? 'Zapisz zmiany' : 'Dodaj' }}</button>
+                <button type="button" class="btn btn-secondary ms-2" v-if="isEditing" @click="cancelEdit">Anuluj</button>
+            </form>
+        </div>
+    </div>
+
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Klient</th>
+                <th>Sprzęt</th>
+                <th>Opis</th>
+                <th>Status</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="ticket in tickets" :key="ticket.id">
+                <td>{{ ticket.id }}</td>
+                <td>{{ ticket.imie }}</td>
+                <td>{{ ticket.model }}</td>
+                <td>{{ ticket.opis_usterki }}</td>
+                <td>
+                    <span :class="{'badge bg-warning': ticket.status === 'Oczekujące', 'badge bg-info': ticket.status === 'W naprawie', 'badge bg-success': ticket.status === 'Gotowe'}">
+                        {{ ticket.status }}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary me-2" @click="editTicket(ticket)">Edytuj</button>
+                    <button class="btn btn-sm btn-danger" @click="deleteTicket(ticket.id)">Usuń</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                apiUrl: 'http://localhost:3000/api/tickets',
+                tickets: [],
+                // Zaktualizowany model danych Vue na nowe nazwy
+                form: { id: null, imie: '', model: '', opis_usterki: '', status: 'Oczekujące' },
+                isEditing: false
+            }
+        },
+        methods: {
+            async fetchTickets() {
+                const response = await axios.get(this.apiUrl);
+                this.tickets = response.data;
+            },
+            async submitForm() {
+                if (this.isEditing) {
+                    await axios.put(`${this.apiUrl}/${this.form.id}`, this.form);
+                } else {
+                    await axios.post(this.apiUrl, this.form);
+                }
+                this.resetForm();
+                this.fetchTickets();
+            },
+            editTicket(ticket) {
+                this.form = { ...ticket };
+                this.isEditing = true;
+            },
+            async deleteTicket(id) {
+                if (confirm('Czy na pewno chcesz usunąć to zgłoszenie?')) {
+                    await axios.delete(`${this.apiUrl}/${id}`);
+                    this.fetchTickets();
+                }
+            },
+            cancelEdit() {
+                this.resetForm();
+            },
+            resetForm() {
+                // Zaktualizowany reset formularza
+                this.form = { id: null, imie: '', model: '', opis_usterki: '', status: 'Oczekujące' };
+                this.isEditing = false;
+            }
+        },
+        mounted() {
+            this.fetchTickets();
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
